@@ -12,7 +12,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Deteksi koneksi Socket.io (opsional untuk Walkie-Talkie)
+// Deteksi koneksi Socket.io
 io.on('connection', (socket) => {
   console.log('User terhubung:', socket.id);
   
@@ -21,8 +21,8 @@ io.on('connection', (socket) => {
   });
 });
 
-// Port dinamis Railway
-const PORT = process.env.PORT || 8080;
+// Wajib murni menggunakan port dari Railway
+const PORT = process.env.PORT;
 http.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
