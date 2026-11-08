@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aplikasi HT PTT Web</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #121212;
+      color: white;
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 5px;
+      letter-spacing: 1px;
+    }
+    #sub-info {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 30px;
+    }
+    /* Layar Izin Awal (Overlay) */
+    #permission-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(18, 18, 18, 0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    #start-btn {
+      padding: 15px 30px;
+      font-size: 18px;
+      font-weight: bold;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+    }
+    #ptt-container {
+      display: none; /* Disembunyikan sebelum izin diberikan */
+      flex-direction: column;
+      align-items: center;
+    }
+    #ptt-btn {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: none;
+      background-color: #d32f2f;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      box-shadow: 0 6px 20px rgba(211, 47, 47, 0.5);
+      transition: transform 0.1s, background-color 0.2s;
+    }
+    #ptt-btn:active, #ptt-btn.active {
+      background-color: #388e3c;
+      transform: scale(0.95);
+      box-shadow: 0 4px 15px rgba(56, 142, 60, 0.7);
+    }
+    #status {
+      margin-top: 30px;
+      font-size: 16px;
+      font-weight: 500;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Layar Pop-up Pertama Kali Buka Web -->
+  <div id="permission-overlay">
+    <h2>SELAMAT DATANG DI HT WEB</h2>
+    <p style="color: #bbb; max-width: 300px; margin-bottom: 20px;">Tekan tombol di bawah untuk mengizinkan mikrofon dan masuk ke saluran.</p>
+    <button id="start-btn">MASUK & IZINKAN AUDIO</button>
+  </div>
+
+  <!-- Tampilan Utama Walkie-Talkie -->
+  <div id="ptt-container">
+    <h2>WALKIE-TALKIE PTT</h2>
+    <div id="sub-info">Tekan dan tahan tombol untuk berbicara, lepas untuk mengirim</div>
+
+    <button id="ptt-btn">TEKAN & BICARA</button>
+    <p id="status">Status: Standby</p>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const startBtn = document.getElementById('start-btn');
+    const permissionOverlay = document.getElementById('permission-overlay');
+    const pttContainer = document.getElementById('ptt-container');
+    const pttBtn = document.getElementById('ptt-btn');
+    const statusText = document.getElementById('status');
+
+    let mediaRecorder;
+    let audioStream;
+    let audioChunks = [];
+
+    // Tombol Interaksi Pertama untuk Membuka Izin Mikrofon & Mengatasi Autoplay
+    startBtn.addEventListener('click', async () => {
+      try {
+        // Meminta akses mikrofon secara eksplisit
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        // Konfigurasi MediaRecorder
+        mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+          socket.emit('audio-stream', audioBlob);
+          audioChunks = [];
+        };
+
+        // Hilangkan layar awal, tampilkan tombol PTT utama
+        permissionOverlay.style.display = 'none';
+        pttContainer.style.display = 'flex';
+
+      } catch (err) {
+        console.error("Gagal akses mikrofon:", err);
+        alert('Akses mikrofon ditolak! Harap berikan izin mikrofon pada browser Anda agar dapat menggunakan HT.');
+      }
+    });
+
+    // Menerima data suara dari perangkat lain
+    socket.on('audio-stream', async (data) => {
+      const blob = new Blob([data], { type: 'audio/webm' });
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
+      
+      audio.play().catch(err => {
+        console.log("Autoplay audio dicegah oleh browser:", err);
+      });
+    });
+
+    socket.on('ptt-status', (data) => {
+      if (data.active) {
+        statusText.innerText = "Seseorang sedang bicara...";
+        statusText.style.color = "#4caf50";
+      } else {
+        statusText.innerText = "Status: Standby";
+        statusText.style.color = "#aaa";
+      }
+    });
+
+    function startTalk() {
+      if (mediaRecorder && mediaRecorder.state === "inactive") {
+        audioChunks = [];
+        mediaRecorder.start();
+        pttBtn.classList.add('active');
+        statusText.innerText = "Anda sedang merekam...";
+        statusText.style.color = "#ff5252";
+        socket.emit('ptt-status', true);
+      }
+    }
+
+    function stopTalk() {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        pttBtn.classList.remove('active');
+        statusText.innerText = "Status: Standby";
+        statusText.style.color = "#aaa";
+        socket.emit('ptt-status', false);
+      }
+    }
+
+    // Event Listener untuk PTT (Mouse & Touch)
+    pttBtn.addEventListener('mousedown', startTalk);
+    pttBtn.addEventListener('mouseup', stopTalk);
+    
+    pttBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      startTalk();
+    });
+    
+    pttBtn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      stopTalk();
+    });
+  </script>
+</body>
+</html>
