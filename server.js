@@ -1,7 +1,8 @@
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+const { Server } = require('socket.io');
+const io = new Server(http);
 const path = require('path');
 
 // Melayani file statis
@@ -11,8 +12,16 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// Deteksi koneksi Socket.io (opsional untuk Walkie-Talkie)
+io.on('connection', (socket) => {
+  console.log('User terhubung:', socket.id);
+  
+  socket.on('disconnect', () => {
+    console.log('User terputus:', socket.id);
+  });
+});
 
-// Wajib menggunakan port dinamis dari Railway
+// Port dinamis Railway
 const PORT = process.env.PORT || 8080;
 http.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
