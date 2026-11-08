@@ -21,8 +21,8 @@ io.on('connection', (socket) => {
   });
 });
 
-// Gunakan port Railway, dengan cadangan 8080 agar tidak crash
+// Port dinamis Railway yang benar dan bersih
 const PORT = process.env.PORT || 8080;
-http.listen(PORT, '0.0.0.0', () => {
+http.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
