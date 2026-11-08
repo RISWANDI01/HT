@@ -22,7 +22,7 @@ io.on('connection', (socket) => {
 });
 
 // Port dinamis Railway yang benar dan bersih
-const PORT = process.env.PORT || 8080;
-http.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server HT berjalan di port ${PORT}`);
 });
