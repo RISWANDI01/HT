@@ -11,8 +11,9 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Gunakan port dari Railway langsung
-const PORT = process.env.PORT || 3000;
+
+// Wajib menggunakan port dinamis dari Railway
+const PORT = process.env.PORT;
 http.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
